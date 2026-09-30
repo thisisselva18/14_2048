@@ -1,4 +1,11 @@
+from collections import namedtuple
+
 from board import Board
+
+DIRECTIONS = {"w": "up", "a": "left", "s": "down", "d": "right"}
+
+# Outcome of one accepted move; Game.move returns None when nothing changed.
+MoveResult = namedtuple("MoveResult", "direction points merges")
 
 
 class Game:
@@ -15,17 +22,35 @@ class Game:
         print("Score:", self.board.score, " Best:", self.best_score)
 
     def move(self, key):
+        """Apply one move. Returns a MoveResult, or None if the board did not change."""
         moves = {"a": self.board.move_left, "d": self.board.move_right,
                  "w": self.board.move_up, "s": self.board.move_down}
         if key not in moves:
-            return False
+            return None
         before = self.snapshot()
-        changed = moves[key]()
-        if changed:  # an unchanged board never receives a new tile
-            self.board.add_random_tile()
-            self.best_score = max(self.best_score, self.board.score)
-            self.history = [before]
-        return changed
+        tiles_before = self.tile_count()
+        if not moves[key]():  # an unchanged board never receives a new tile
+            return None
+        result = MoveResult(DIRECTIONS[key], self.board.score - before[1],
+                            tiles_before - self.tile_count())
+        self.board.add_random_tile()
+        self.best_score = max(self.best_score, self.board.score)
+        self.history = [before]
+        return result
+
+    def play(self, key):
+        """Perform one move command and return a single line of feedback."""
+        result = self.move(key)
+        if result is None:
+            return f"Can't move {DIRECTIONS[key]}: nothing would slide or merge."
+        if not result.merges:
+            return f"Moved {result.direction}."
+        plural = "s" if result.merges > 1 else ""
+        return (f"Moved {result.direction}: {result.merges} merge{plural}, "
+                f"+{result.points} points.")
+
+    def tile_count(self):
+        return sum(1 for row in self.board.grid for x in row if x)
 
     def snapshot(self):
         return [row[:] for row in self.board.grid], self.board.score, self.best_score
@@ -70,7 +95,7 @@ class Game:
             if key == "u":
                 print("Undid last move." if self.undo() else "Nothing to undo.")
                 continue
-            if key not in ("w", "a", "s", "d"):
+            if key not in DIRECTIONS:
                 print(f"Unknown command {key!r}. Use W/A/S/D to move, U to undo, Q to quit.")
                 continue
-            self.move(key)
+            print(self.play(key))
