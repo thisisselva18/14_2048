@@ -1,6 +1,7 @@
 import random
 
 SIZE = 4
+WIN_TILE = 2048
 
 
 class Board:
@@ -22,24 +23,28 @@ class Board:
 
         Each original tile takes part in at most one merge, so a tile
         created by a merge cannot merge again in the same move.
+        Returns (new_line, points) where points is the sum of merged tiles.
         """
         values = [x for x in line if x]
         result = []
+        points = 0
         i = 0
         while i < len(values):
             if i + 1 < len(values) and values[i] == values[i + 1]:
                 result.append(values[i] * 2)
+                points += values[i] * 2
                 i += 2  # both original tiles are consumed by this merge
             else:
                 result.append(values[i])
                 i += 1
-        return result + [0] * (SIZE - len(result))
+        return result + [0] * (SIZE - len(result)), points
 
     def move_left(self):
         changed = False
         for r in range(SIZE):
             old = self.grid[r][:]
-            self.grid[r] = self.slide_line(old)
+            self.grid[r], points = self.slide_line(old)
+            self.score += points
             changed |= old != self.grid[r]
         return changed
 
@@ -47,7 +52,9 @@ class Board:
         changed = False
         for r in range(SIZE):
             old = self.grid[r][:]
-            self.grid[r] = list(reversed(self.slide_line(list(reversed(old)))))
+            new, points = self.slide_line(list(reversed(old)))
+            self.grid[r] = list(reversed(new))
+            self.score += points
             changed |= old != self.grid[r]
         return changed
 
@@ -55,7 +62,8 @@ class Board:
         changed = False
         for c in range(SIZE):
             old = [self.grid[r][c] for r in range(SIZE)]
-            new = self.slide_line(old)
+            new, points = self.slide_line(old)
+            self.score += points
             for r in range(SIZE):
                 self.grid[r][c] = new[r]
             changed |= old != new
@@ -65,13 +73,19 @@ class Board:
         changed = False
         for c in range(SIZE):
             old = [self.grid[r][c] for r in range(SIZE)]
-            new = list(reversed(self.slide_line(list(reversed(old)))))
+            new, points = self.slide_line(list(reversed(old)))
+            new = list(reversed(new))
+            self.score += points
             for r in range(SIZE):
                 self.grid[r][c] = new[r]
             changed |= old != new
         return changed
 
+    def has_won(self):
+        return any(x >= WIN_TILE for row in self.grid for x in row)
+
     def can_move(self):
+        """Read-only check: is there an empty cell or an adjacent equal pair?"""
         if any(0 in row for row in self.grid):
             return True
         for r in range(SIZE):

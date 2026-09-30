@@ -20,28 +20,42 @@ class Game:
         if key not in moves:
             return False
         changed = moves[key]()
-        if changed:
+        if changed:  # an unchanged board never receives a new tile
             self.board.add_random_tile()
         return changed
+
+    def status(self):
+        """Return "won", "lost", or None while the game can continue."""
+        if self.board.has_won():
+            return "won"
+        if not self.board.can_move():
+            return "lost"
+        return None
 
     def run(self):
         print("2048 — W/A/S/D to move, U to undo, Q to quit.")
         while True:
             self.display()
-            if any(2048 in row for row in self.board.grid):
-                print("You reached 2048!")
+            status = self.status()
+            if status == "won":
+                print("You reached 2048! You win.")
                 return
-            if not self.board.can_move():
-                print("No legal moves remain.")
+            if status == "lost":
+                print("No legal moves remain. Game over.")
                 return
-            key = input("> ").strip().lower()
+            try:
+                key = input("> ").strip().lower()
+            except (EOFError, KeyboardInterrupt):
+                print("\nGoodbye.")
+                return
             if key == "q":
+                print("Goodbye.")
                 return
             if key == "u":
                 print("Undo is not implemented yet.")
                 continue
-            if key not in "wasd":
-                print("Use W/A/S/D.")
+            if key not in ("w", "a", "s", "d"):
+                print(f"Unknown command {key!r}. Use W/A/S/D to move, U to undo, Q to quit.")
                 continue
             if self.move(key):
                 self.best_score = max(self.best_score, self.board.score)
