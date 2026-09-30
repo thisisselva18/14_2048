@@ -18,13 +18,21 @@ class Board:
 
     @staticmethod
     def slide_line(line):
+        """Compress a line towards index 0, merging equal neighbours.
+
+        Each original tile takes part in at most one merge, so a tile
+        created by a merge cannot merge again in the same move.
+        """
         values = [x for x in line if x]
         result = []
-        for value in values:
-            if result and result[-1] == value:
-                result[-1] *= 2  # intentional double-merge bug
+        i = 0
+        while i < len(values):
+            if i + 1 < len(values) and values[i] == values[i + 1]:
+                result.append(values[i] * 2)
+                i += 2  # both original tiles are consumed by this merge
             else:
-                result.append(value)
+                result.append(values[i])
+                i += 1
         return result + [0] * (SIZE - len(result))
 
     def move_left(self):
